@@ -254,8 +254,6 @@ func processDataAndStore(data map[string]map[int][]CondensedMenuItem) error {
 		localCache.ServeDate, localCache.Breakfast, localCache.Lunch, localCache.Dinner = currentDate, data[currentDate][1], data[currentDate][2], data[currentDate][3]
 	}
 
-	// TODO: Right here is where I would do upsert
-
 	for date, meals := range data {
 		filter := bson.M{"serve_date": date}
 		_, err = collection.UpdateOne(context.TODO(), filter, bson.D{{"$set", bson.D{
@@ -278,10 +276,10 @@ func ConvertToCondensedMenuItem(item MenuItem) (CondensedMenuItem, error) {
 	// All of the houses have the same foods served, so we can just check one,
 	// otherwise grab breakfast from Annenberg
 	houseLocation := true
-	if item.LocationName != "Currier House" {
-		return CondensedMenuItem{}, fmt.Errorf("location not included: %s", item.LocationName)
-	} else if item.MealNumber == 1 && item.LocationName != "Annenberg Hall" {
+	if item.MealNumber == 1 && item.LocationName == "Annenberg Hall" {
 		houseLocation = false
+	} else if item.LocationName != "Currier House" || item.MealNumber == 1 && item.LocationName != "Annenberg Hall" {
+		return CondensedMenuItem{}, fmt.Errorf("location not included: %s", item.LocationName)
 	}
 
 	return CondensedMenuItem{
@@ -316,7 +314,7 @@ func ConvertMenuItemsToCondensedMenuItems(items []MenuItem) map[string]map[int][
 		condensedItem.ServeDate = nil
 		condensedItem.MealNumber = nil
 
-		if mealNumber == 1 && condensedItem.HouseLocation == false {
+		if mealNumber == 1 {
 			itemsByCategory[key][1] = append(itemsByCategory[key][1], condensedItem)
 		} else if mealNumber == 2 && condensedItem.HouseLocation {
 			itemsByCategory[key][2] = append(itemsByCategory[key][2], condensedItem)
