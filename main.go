@@ -178,7 +178,7 @@ func main() {
 			// Will set the local cache, so return here
 			dbData, err := fetchDataByDate(serveDate)
 			if err != nil && len(dbData.Dinner) == 0 {
-				if err == mongo.ErrNoDocuments && !(serveDate >= earliestRecord) || !(serveDate <= latestRecord) {
+				if err == mongo.ErrNoDocuments && (serveDate < earliestRecord) || (serveDate > latestRecord) {
 					// Have some check if it is outside of the range of dates
 					// Check if the date is before 05/05/2023 and return StatusNotFound if so
 					// Otherwise, call fetchHUDSData() and return the result
