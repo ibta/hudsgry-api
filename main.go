@@ -177,7 +177,7 @@ func main() {
 		} else {
 			// Will set the local cache, so return here
 			dbData, err := fetchDataByDate(serveDate)
-			if err != nil && len(dbData.Dinner) == 0 {
+			if err != nil || len(dbData.Dinner) == 0 {
 				if err == mongo.ErrNoDocuments && (serveDate < earliestRecord) || (serveDate > latestRecord) {
 					// Have some check if it is outside of the range of dates
 					// Check if the date is before 05/05/2023 and return StatusNotFound if so
@@ -189,6 +189,12 @@ func main() {
 					}
 					return
 				}
+				log.Println("dbData: ", dbData)
+				log.Println("len dbData.Dinner: ", len(dbData.Dinner))
+				log.Println("Failed to fetch data from MongoDB", err)
+				log.Println("Failed to fetch data from MongoDB", err)
+				log.Println("Failed to fetch data from MongoDB", err)
+				log.Println("Failed to fetch data from MongoDB", err)
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch data from MongoDB"})
 				return
 			}
@@ -269,9 +275,9 @@ func fetchAndProcessData() error {
 }
 
 func fetchDataByDate(date string) (CondensedMenu, error) {
-	if err != nil {
-		return CondensedMenu{}, fmt.Errorf("failed to get collection: %v", err)
-	}
+	//if err != nil {
+	//	return CondensedMenu{}, fmt.Errorf("failed to get collection: %v", err)
+	//}
 
 	filter := bson.M{"serve_date": date}
 	var result CondensedMenu
@@ -311,7 +317,9 @@ func processDataAndStore(data map[string]map[int][]CondensedMenuItem) error {
 	}
 
 	if err != nil {
-		log.Println("Failed to update data in MongoDB")
+		log.Println("Failed to update data in MongoDB", err)
+		log.Println("Failed to update data in MongoDB", err)
+		log.Println("Failed to update data in MongoDB", err)
 		return fmt.Errorf("failed to insert item into collection: %v", err)
 	}
 
