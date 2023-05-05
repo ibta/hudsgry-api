@@ -298,9 +298,6 @@ func processDataAndStore(data map[string]map[int][]CondensedMenuItem) error {
 	// Store data in MongoDB
 	updateOptions := options.Update().SetUpsert(true)
 	currentDate := time.Now().Format("01/02/2006")
-	if err != nil {
-		return fmt.Errorf("failed to get collection: %v", err)
-	}
 
 	if _, exists := data[currentDate]; exists {
 		localCache.ServeDate, localCache.Breakfast, localCache.Lunch, localCache.Dinner = currentDate, data[currentDate][1], data[currentDate][2], data[currentDate][3]
@@ -314,13 +311,10 @@ func processDataAndStore(data map[string]map[int][]CondensedMenuItem) error {
 			{"lunch", meals[2]},
 			{"dinner", meals[3]},
 		}}}, updateOptions)
-	}
-
-	if err != nil {
-		log.Println("Failed to update data in MongoDB", err)
-		log.Println("Failed to update data in MongoDB", err)
-		log.Println("Failed to update data in MongoDB", err)
-		return fmt.Errorf("failed to insert item into collection: %v", err)
+		if err != nil {
+			log.Println("Failed to update data in MongoDB", err)
+			return fmt.Errorf("failed to insert item into collection: %v", err)
+		}
 	}
 
 	return nil
