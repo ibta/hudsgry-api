@@ -78,7 +78,7 @@ type CondensedMenuItem struct {
 }
 
 type CondensedMenu struct {
-	ServeDate string              `json:"Serve_Date"`
+	ServeDate string              `json:"Serve_Date,omitempty"`
 	Breakfast []CondensedMenuItem `json:"Breakfast"`
 	Lunch     []CondensedMenuItem `json:"Lunch"`
 	Dinner    []CondensedMenuItem `json:"Dinner"`
@@ -137,6 +137,12 @@ func main() {
 		log.Println("Fetched HUDS data successfully (in main)")
 	}
 
+	// Get earliest and latest records
+	earliestRecord, latestRecord, err = getEarliestAndLatestRecords()
+	if err != nil {
+		log.Printf("Failed to get earliest and latest records: %v\n", err)
+	}
+
 	// Schedule data fetching and processing
 	scheduler := cron.New(cron.WithLocation(time.FixedZone("EST", -5*60*60)))
 	_, err = scheduler.AddFunc("0 3 * * *", func() {
@@ -172,14 +178,14 @@ func main() {
 			// Will set the local cache, so return here
 			dbData, err := fetchDataByDate(serveDate)
 			if err != nil && len(dbData.Dinner) == 0 {
-				if err == mongo.ErrNoDocuments && !(serveDate >= earliestRecord) && !(serveDate <= latestRecord) {
+				if err == mongo.ErrNoDocuments && !(serveDate >= earliestRecord) || !(serveDate <= latestRecord) {
 					// Have some check if it is outside of the range of dates
 					// Check if the date is before 05/05/2023 and return StatusNotFound if so
 					// Otherwise, call fetchHUDSData() and return the result
 					if serveDate < "05/05/2023" {
 						c.JSON(http.StatusNotFound, gin.H{"error": "records don't exist before 05/05/2023 :("})
 					} else {
-						c.JSON(http.StatusNotFound, gin.H{"error": "date not found in db or HUDS API"})
+						c.JSON(http.StatusNotFound, gin.H{"error": "date out of range"})
 					}
 					return
 				}
@@ -202,6 +208,46 @@ func main() {
 	if err != nil {
 		return
 	}
+}
+
+func getEarliestAndLatestRecords() (string, string, error) {
+	// Get the earliest and latest records from the database
+	// If there are no records, return the earliest and latest dates that HUDS has data for
+
+	// Cannot figure out why the database doesn't return a serve date, but improvising it for now
+	filter := bson.D{}
+	opts := options.FindOne().SetSort(bson.D{{"serve_date", 1}})
+	var earliestRecord CondensedMenu
+	var latestRecord CondensedMenu
+	var earliestDate string
+	var latestDate string
+	err := collection.FindOne(context.TODO(), filter, opts).Decode(&earliestRecord)
+
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			earliestDate = "05/05/2023"
+		} else {
+			return "", "", err
+		}
+	}
+
+	opts2 := options.FindOne().SetSort(bson.D{{"serve_date", -1}})
+	err = collection.FindOne(context.TODO(), filter, opts2).Decode(&latestRecord)
+
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			latestDate = time.Now().Format("01/02/2006")
+		} else {
+			return "", "", err
+		}
+	}
+	earliestDate = *earliestRecord.Breakfast[0].ServeDate
+	latestDate = *latestRecord.Breakfast[0].ServeDate
+	log.Println("earliestRecord: ", earliestDate)
+	log.Println("latestRecord: ", latestDate)
+
+	return earliestDate, latestDate, nil
+
 }
 
 func fetchAndProcessData() error {
